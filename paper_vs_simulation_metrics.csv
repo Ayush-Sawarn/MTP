@@ -1,0 +1,21 @@
+pilot_count,snr_db,model,paper_mse_digitized_approx,simulation_mse,relative_difference_percent,paper_source,simulation_checkpoint,simulation_status
+24,0,AttRNet-Conv,0.216,,,Figure 5 digitized from supplied PDF; approximate,,awaiting_training
+24,5,AttRNet-Conv,0.0912,,,Figure 5 digitized from supplied PDF; approximate,,awaiting_training
+24,10,AttRNet-Conv,0.0316,,,Figure 5 digitized from supplied PDF; approximate,,awaiting_training
+24,15,AttRNet-Conv,0.0120,,,Figure 5 digitized from supplied PDF; approximate,,awaiting_training
+24,20,AttRNet-Conv,0.00433,,,Figure 5 digitized from supplied PDF; approximate,,awaiting_training
+24,0,AttRNet-FC,0.234,0.031961634,-86.3412,Figure 5 digitized from supplied PDF; approximate,runs\matlab_attnet_fc_24\best.pt,complete
+24,5,AttRNet-FC,0.0910,0.012733218,-86.0075,Figure 5 digitized from supplied PDF; approximate,runs\matlab_attnet_fc_24\best.pt,complete
+24,10,AttRNet-FC,0.0316,0.0054206786,-82.8460,Figure 5 digitized from supplied PDF; approximate,runs\matlab_attnet_fc_24\best.pt,complete
+24,15,AttRNet-FC,0.0120,0.0026412814,-77.9893,Figure 5 digitized from supplied PDF; approximate,runs\matlab_attnet_fc_24\best.pt,complete
+24,20,AttRNet-FC,0.00394,0.0016110511,-59.1104,Figure 5 digitized from supplied PDF; approximate,runs\matlab_attnet_fc_24\best.pt,complete
+48,0,AttRNet-Conv,0.138,0.019261513,-86.0424,Figure 6 digitized from supplied PDF; approximate,runs\matlab_attnet_conv_48\best.pt,complete
+48,5,AttRNet-Conv,0.0522,0.008007774,-84.6594,Figure 6 digitized from supplied PDF; approximate,runs\matlab_attnet_conv_48\best.pt,complete
+48,10,AttRNet-Conv,0.0204,0.0037174954,-81.7770,Figure 6 digitized from supplied PDF; approximate,runs\matlab_attnet_conv_48\best.pt,complete
+48,15,AttRNet-Conv,0.00731,0.0021733803,-70.2684,Figure 6 digitized from supplied PDF; approximate,runs\matlab_attnet_conv_48\best.pt,complete
+48,20,AttRNet-Conv,0.00277,0.0015191124,-45.1584,Figure 6 digitized from supplied PDF; approximate,runs\matlab_attnet_conv_48\best.pt,complete
+48,0,AttRNet-FC,0.128,,,Figure 6 digitized from supplied PDF; approximate,,awaiting_training
+48,5,AttRNet-FC,0.0505,,,Figure 6 digitized from supplied PDF; approximate,,awaiting_training
+48,10,AttRNet-FC,0.0184,,,Figure 6 digitized from supplied PDF; approximate,,awaiting_training
+48,15,AttRNet-FC,0.00606,,,Figure 6 digitized from supplied PDF; approximate,,awaiting_training
+48,20,AttRNet-FC,0.00194,,,Figure 6 digitized from supplied PDF; approximate,,awaiting_training
