@@ -19,7 +19,9 @@ def mse(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
     total, count = 0.0, 0
     with torch.no_grad():
         for x, y in loader:
-            err = (model(x.to(device)) - y.to(device)).square().mean()
+            # Complex-channel MSE: sum real/imag squared error per resource
+            # element, then average across samples and resource elements.
+            err = (model(x.to(device)) - y.to(device)).square().sum(dim=1).mean()
             total += err.item() * x.size(0)
             count += x.size(0)
     return total / count
@@ -52,7 +54,6 @@ def main() -> None:
     val_loader = DataLoader(val_data, batch_size=args.batch_size, num_workers=args.workers, pin_memory=device.type == "cuda")
     model = AttRNet(args.model, args.features, output_kernel=tuple(args.output_kernel)).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    criterion = nn.MSELoss()
     best = float("inf")
     print(f"device={device}; parameters={parameter_count(model):,}; data={data_dir}")
     print(f"train={len(train_data):,}; validation={len(val_data):,}; pilot input={tuple(train_data.x.shape[1:])}")
@@ -62,7 +63,7 @@ def main() -> None:
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad(set_to_none=True)
-            loss = criterion(model(x), y)
+            loss = (model(x) - y).square().sum(dim=1).mean()
             loss.backward()
             optimizer.step()
             total += loss.item() * x.size(0)

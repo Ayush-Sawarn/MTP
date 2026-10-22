@@ -76,6 +76,9 @@ class AttRNet(nn.Module):
         self.output_size = output_size
         self.stem = nn.Conv2d(2, features, 3, padding=1)
         self.blocks = nn.Sequential(*[AttResBlock(features, attention) for _ in range(blocks)])
+        # The paper applies a 3x3 feature convolution after the AttResBlocks,
+        # then upsamples and applies its 36x7 output convolution.
+        self.refine = nn.Conv2d(features, features, 3, padding=1)
         # Explicit asymmetric padding retains spatial size for the paper's
         # even-height 36x7 kernel without PyTorch's slower padding='same' path.
         kh, kw = output_kernel
@@ -88,6 +91,7 @@ class AttRNet(nn.Module):
     def forward(self, ls_pilots: torch.Tensor) -> torch.Tensor:
         x = self.stem(ls_pilots)
         x = self.blocks(x)
+        x = self.refine(x)
         x = F.interpolate(x, size=self.output_size, mode="bilinear", align_corners=False)
         return self.head(self.head_padding(x))
 
