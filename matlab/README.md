@@ -3,9 +3,13 @@
 Open `generate_epa_ofdm_dataset.m` in MATLAB Online and run:
 
 ```matlab
+generate_epa_ofdm_dataset(12, 'epa7_12pilots_matlab.mat')
+generate_epa_ofdm_dataset(16, 'epa7_16pilots_matlab.mat')
 generate_epa_ofdm_dataset(24, 'epa7_24pilots_matlab.mat')
 generate_epa_ofdm_dataset(48, 'epa7_48pilots_matlab.mat')
 ```
+
+The paper reports 24 and 48 pilots. The 12- and 16-pilot datasets are additional reduced-overhead experiments. The script places four pilot-time positions and uses 3, 4, 6, or 12 evenly spaced pilot-frequency positions, respectively.
 
 The script requires **LTE Toolbox** and `lteFadingChannel`. It uses MATLAB's
 sample-level EPA waveform filtering with fractional-delay compensation, GMEDS
@@ -27,6 +31,8 @@ After uploading the `.mat` file into the project workspace, convert it without
 altering any samples:
 
 ```powershell
+python import_matlab_dataset.py --mat-file epa7_12pilots_matlab.mat --output data/matlab_epa7_12pilots
+python import_matlab_dataset.py --mat-file epa7_16pilots_matlab.mat --output data/matlab_epa7_16pilots
 python import_matlab_dataset.py --mat-file epa7_24pilots_matlab.mat --output data/matlab_epa7_24pilots
 python import_matlab_dataset.py --mat-file epa7_48pilots_matlab.mat --output data/matlab_epa7_48pilots
 ```

@@ -43,7 +43,61 @@ Each plot compares the paper's digitized MSE values (dashed) with this project's
 
 The October 2026 mid-semester presentation reports preliminary comparisons of comb, uniform, block, staggered, and lattice pilot arrangements. Its reported observations are that uniform placement gives the lowest MSE among the tested 24-pilot patterns over most SNRs, and 16 uniformly placed pilots outperform the tested 24-pilot block and comb patterns in the shown results. These are preliminary presentation results; their per-SNR data and generation scripts are not currently included in this repository.
 
-The current checked-in dataset and training scripts still implement only the two baseline uniform rectangular grids: 24 pilots (6 frequency positions × 4 time positions) and 48 pilots (12 × 4). They do not yet reproduce the alternative patterns or 16-pilot result. Pilot-location comparisons should use matched SNRs, data splits, and training settings.
+The generator and training scripts support uniform rectangular grids with 12, 16, 24, or 48 pilots, each using four pilot-time positions. The ConcreteAE selector and AttRNet comparison have now been run for 12 and 16 pilots using FC attention.
+
+The selector needs noisy LS candidates at all 72 Ã— 14 resource elements. The MATLAB files store noisy LS values only at the original uniform pilot positions, along with the clean full channel. `pilot_design/pilot_utils.py` therefore reconstructs candidate observations on demand from each saved clean channel using the generator's unit-energy QPSK and AWGN equation and that sample's SNR. This leaves the imported datasets unchanged. It is an explicit observation-generation assumption: the added pilot patterns are not measurements recorded in the original MATLAB file.
+
+Pilot indices use C-order flattening, `index = subcarrier * 14 + OFDM_symbol`. The selector fits only the training split, chooses checkpoints by discrete-selection validation MSE, and does not load test data. The AttRNet scripts keep the existing estimator architecture and train separate models per pattern and budget. Both methods use identical synthesized noisy observations for a given sample/seed and zero-filled `[2,72,14]` input grids.
+
+Current FC results are mixed. At 12 pilots, ConcreteAE has lower NMSE at 10, 15, and 20 dB, but higher NMSE at 0 and 5 dB; its mean NMSE over the five SNRs is slightly higher (0.1642 vs 0.1636). At 16 pilots, ConcreteAE is better at 0 dB but worse at 5–20 dB, with a pronounced gap at higher SNRs. These are single-run results. In the 12-pilot FC runs, uniform AttRNet trained for 100 epochs while ConcreteAE AttRNet trained for 50, so that pair should be rerun with matched settings. The 16-pilot ConcreteAE selector's best MLP-decoder validation epoch was 1; that suggests the selected pattern may be unstable or mismatched to AttRNet's objective, but does not establish the cause. Test NMSE should not be used to choose selectors or tune training settings.
+
+For future FC experiments, use each budget's matching MATLAB import. Train selectors for each budget; train uniform AttRNet as well when a matched uniform model does not already exist under this full-grid sparse-input protocol. The 12- and 16-pilot imports have identical clean-channel targets and SNR assignments, as do the 24- and 48-pilot imports.
+
+To rerun the complete FC comparison from 12 pilots, use the PowerShell automation script from this project directory. It sequentially trains all four selectors, then uniform and ConcreteAE FC AttRNet models for each budget, evaluates all eight models on the held-out test splits, and regenerates the FC plots. It stops if a step fails. Activate the desired Python environment first so `python` resolves to that environment.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_fc_pilot_experiments.ps1
+```
+
+The default is 100 AttRNet epochs and seed 2025. Optional parameters can change those values, for example `-Epochs 50 -Seed 2026`. The script overwrites the matching selector indices/checkpoints, FC run checkpoints/configs, and FC metric rows for these four budgets. It does not delete historical Conv metrics.
+
+```powershell
+python train_pilot_selector.py --pilots 48 --data-dir data/matlab_epa7_24pilots
+python train_pilot_selector.py --pilots 24 --data-dir data/matlab_epa7_24pilots
+python train_pilot_selector.py --pilots 16 --data-dir data/matlab_epa7_16pilots
+python train_pilot_selector.py --pilots 12 --data-dir data/matlab_epa7_12pilots
+```
+
+For 12 and 16 pilots, train matching uniform and ConcreteAE FC estimators. Example for 16 pilots:
+
+```powershell
+python train_pilot_attnet.py --model fc --method uniform --pilots 16 --data-dir data/matlab_epa7_24pilots
+python train_pilot_attnet.py --model fc --method concrete --pilots 16 --pilot-indices results/pilot_indices/concrete_16.npy --data-dir data/matlab_epa7_24pilots
+```
+
+For 24 and 48 pilots, ConcreteAE FC training commands are:
+
+```powershell
+python train_pilot_attnet.py --model fc --method concrete --pilots 24 --pilot-indices results/pilot_indices/concrete_24.npy --data-dir data/matlab_epa7_24pilots --epochs 100
+python train_pilot_attnet.py --model fc --method concrete --pilots 48 --pilot-indices results/pilot_indices/concrete_48.npy --data-dir data/matlab_epa7_48pilots --epochs 100
+```
+
+The existing `runs/corrected_fc_24` and `runs/corrected_fc_48` uniform checkpoints take compact pilot-grid inputs (`[2, P_f, 4]`). The new pilot-pattern training pipeline takes zero-filled full-grid inputs (`[2,72,14]`). Although the estimator architecture and weights have compatible tensor operations, these input/training protocols differ, so their metrics are not a strict controlled comparison. For a fair uniform-versus-ConcreteAE result at 24 and 48 pilots, retrain the uniform FC estimator using `train_pilot_attnet.py` and the matching data directory, or clearly label the existing baseline comparison as protocol-mismatched.
+
+Evaluate each resulting `best.pt` checkpoint on test data:
+
+```powershell
+python evaluate_pilot_patterns.py --checkpoint runs/pilot_design/fc_uniform_16/best.pt --data-dir data/matlab_epa7_24pilots
+python evaluate_pilot_patterns.py --checkpoint runs/pilot_design/fc_concrete_16/best.pt --data-dir data/matlab_epa7_24pilots
+```
+
+Evaluation appends/replaces the matching run rows in `results/metrics.csv` and saves example channel arrays. After evaluating the FC runs, create aggregate NMSE-versus-SNR, NMSE-versus-pilot-count, overhead-versus-NMSE, and selected-location plots with:
+
+```powershell
+python plot_pilot_results.py --model AttRNet-FC
+```
+
+The selector's synthetic observations use the same AWGN variance convention as `matlab/generate_epa_ofdm_dataset.m`. Since the stored dataset does not retain received symbols/noise at omitted positions, learned pilot selection is evaluated under this controlled regenerated observation model. Record that limitation when interpreting results.
 
 ### Next work
 
@@ -68,7 +122,21 @@ For details of the generated arrays and assumptions, see [`DATA_GENERATION_READM
 
 ## Run the baseline
 
-From this directory, activate a Python environment with the packages in `requirements.txt`. MATLAB datasets and imported NumPy splits are already present in this workspace. To generate datasets again, follow the MATLAB instructions in [`matlab/README.md`](matlab/README.md), then import them with `import_matlab_dataset.py`.
+From this directory, activate a Python environment with the packages in `requirements.txt`. MATLAB datasets and imported NumPy splits for the 24- and 48-pilot baseline are already present in this workspace. To generate 12- or 16-pilot MATLAB datasets, run `generate_epa_ofdm_dataset(12, 'epa7_12pilots_matlab.mat')` or `generate_epa_ofdm_dataset(16, 'epa7_16pilots_matlab.mat')` in MATLAB Online, then import them with:
+
+```powershell
+python import_matlab_dataset.py --mat-file epa7_12pilots_matlab.mat --output data/matlab_epa7_12pilots
+python import_matlab_dataset.py --mat-file epa7_16pilots_matlab.mat --output data/matlab_epa7_16pilots
+```
+
+Alternatively, generate them with the Python simulator:
+
+```powershell
+python simulate_data.py --output data/epa7_12pilots --pilots 12
+python simulate_data.py --output data/epa7_16pilots --pilots 16
+```
+
+To train on either dataset, choose its pilot count and data directory, for example `python train.py --model fc --pilots 12 --data-dir data/matlab_epa7_12pilots --epochs 100 --output runs/fc_12pilots`. The existing baseline commands are:
 
 Train each baseline configuration:
 

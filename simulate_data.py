@@ -51,7 +51,7 @@ def write_split(output: Path, name: str, start: int, size: int, pilots: int, snr
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("data/epa7_24pilots"))
-    parser.add_argument("--pilots", type=int, choices=[24, 48], default=24)
+    parser.add_argument("--pilots", type=int, choices=[12, 16, 24, 48], default=24)
     parser.add_argument("--snr-db", type=float, nargs="+", default=[0, 5, 10, 15, 20])
     parser.add_argument("--seed", type=int, default=2025)
     parser.add_argument("--train-size", type=int, default=12_000)
@@ -84,7 +84,7 @@ def main() -> None:
         "snr_db_values": args.snr_db,
         "seed": args.seed,
         "unpublished_assumptions": [
-            "The paper specifies only the total pilot count, not pilot coordinates; a uniform 6x4 grid for 24 pilots or 12x4 grid for 48 pilots is used.",
+            "The paper specifies only the total pilot count, not pilot coordinates; uniform rectangular grids with four pilot-time positions are used (3x4, 4x4, 6x4, or 12x4 for 12, 16, 24, or 48 pilots).",
             "The paper does not state the SNR distribution of its generated training data; samples cycle equally through the specified SNR values.",
             "The paper does not publish random seeds or its MATLAB fading-object options; each EPA tap uses Clarke/Jakes temporal covariance at the stated maximum Doppler.",
             "A 72-point FFT with all 72 stated subcarriers active is used because no guard-band or FFT size is reported.",

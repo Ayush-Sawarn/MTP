@@ -30,7 +30,7 @@ def mse(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--model", choices=["fc", "conv"], default="fc")
-    p.add_argument("--pilots", type=int, choices=[24, 48], default=24, help="Used to select the default data directory.")
+    p.add_argument("--pilots", type=int, choices=[12, 16, 24, 48], default=24, help="Used to select the default data directory.")
     p.add_argument("--data-dir", type=Path, default=None, help="Directory created by simulate_data.py. Defaults to data/epa7_<pilots>pilots.")
     p.add_argument("--features", type=int, default=8)
     p.add_argument("--output-kernel", type=int, nargs=2, default=(36, 7))

@@ -47,9 +47,9 @@ EPA_POWERS_DB = np.array([0, -1, -2, -3, -8, -17.2, -20.8], dtype=np.float64)
 
 
 def make_pilot_grid(n_subcarriers: int, n_symbols: int, pilots: int) -> tuple[np.ndarray, np.ndarray]:
-    """Return a near-uniform rectangular pilot grid (24=6x4, 48=12x4)."""
-    if pilots not in {24, 48}:
-        raise ValueError("This paper evaluates 24 or 48 pilots.")
+    """Return a near-uniform grid with four pilot-time positions."""
+    if pilots not in {12, 16, 24, 48}:
+        raise ValueError("Supported pilot counts are 12, 16, 24, and 48.")
     n_freq, n_time = pilots // 4, 4
     rows = np.rint(np.linspace(0, n_subcarriers - 1, n_freq)).astype(np.int64)
     cols = np.rint(np.linspace(0, n_symbols - 1, n_time)).astype(np.int64)

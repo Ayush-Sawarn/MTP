@@ -55,24 +55,24 @@ def paper_reference(path: Path, pilots: int, model_name: str) -> dict[float, flo
             for row in rows
             if int(row["pilot_count"]) == pilots and row["model"] == model_name
         }
-    if not result:
-        raise ValueError(f"No paper reference entries for {model_name} with {pilots} pilots in {path}")
     return result
 
 
 def save_comparison_plot(path: Path, pilots: int, model_name: str, paper: dict[float, float], simulated: dict[float, float]) -> None:
     """Save a paper-style logarithmic MSE-versus-SNR comparison plot."""
-    snrs = sorted(set(paper) & set(simulated))
+    snrs = sorted(set(paper) & set(simulated)) if paper else sorted(simulated)
     if not snrs:
         raise ValueError("No shared SNR points between paper reference and simulated result")
     color = "tab:red" if model_name == "AttRNet-FC" else "tab:cyan"
     fig, ax = plt.subplots(figsize=(6.4, 4.8), constrained_layout=True)
-    ax.semilogy(snrs, [paper[s] for s in snrs], "--", color=color, marker="*", markersize=9, linewidth=2, label="Paper (digitized)")
+    if paper:
+        ax.semilogy(snrs, [paper[s] for s in snrs], "--", color=color, marker="*", markersize=9, linewidth=2, label="Paper (digitized)")
     ax.semilogy(snrs, [simulated[s] for s in snrs], "-", color="black", marker="o", markerfacecolor="white", markersize=7, linewidth=2, label="Our simulation")
     ax.set_xticks(snrs)
     ax.set_xlabel("SNR (dB)")
     ax.set_ylabel("MSE")
-    ax.set_title(f"{model_name}: MSE comparison with {pilots} pilots")
+    title = f"{model_name}: MSE comparison with {pilots} pilots" if paper else f"{model_name}: MSE versus SNR with {pilots} pilots (simulation only)"
+    ax.set_title(title)
     ax.grid(True, which="both", linestyle=":", alpha=0.65)
     ax.legend()
     path.parent.mkdir(parents=True, exist_ok=True)

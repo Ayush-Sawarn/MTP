@@ -6,6 +6,8 @@ function generate_epa_ofdm_dataset(pilotCount, outputFile)
 % delay filters and GMEDS fading model.
 %
 % Examples (MATLAB Online):
+%   generate_epa_ofdm_dataset(12, 'epa7_12pilots_matlab.mat')
+%   generate_epa_ofdm_dataset(16, 'epa7_16pilots_matlab.mat')
 %   generate_epa_ofdm_dataset(24, 'epa7_24pilots_matlab.mat')
 %   generate_epa_ofdm_dataset(48, 'epa7_48pilots_matlab.mat')
 %
@@ -19,7 +21,7 @@ function generate_epa_ofdm_dataset(pilotCount, outputFile)
 % and saved in METADATA. Adjust them only if the authors' code becomes known.
 
     arguments
-        pilotCount (1,1) double {mustBeMember(pilotCount,[24 48])}
+        pilotCount (1,1) double {mustBeMember(pilotCount,[12 16 24 48])}
         outputFile (1,:) char = 'epa7_matlab.mat'
     end
 

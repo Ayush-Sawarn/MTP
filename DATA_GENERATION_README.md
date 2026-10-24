@@ -32,7 +32,8 @@ reconstruct `y` from `x`.
 | OFDM symbols per subframe | 14 |
 | Modulation | QPSK |
 | Cyclic prefix length | 16 samples |
-| Pilot-count experiments | 24 and 48 |
+| Pilot counts from the paper | 24 and 48 |
+| Additional reduced-overhead counts supported | 12 and 16 |
 | Dataset size | 20,000 samples |
 | Split | 12,000 train / 4,000 validation / 4,000 test |
 
@@ -72,13 +73,18 @@ For each sample, the generator:
 
 ## Pilot arrangement and SNR
 
-The paper reports the pilot counts but does not disclose pilot coordinates.
-This reproduction therefore uses evenly distributed rectangular grids:
+The paper reports 24 and 48 pilots but does not disclose pilot coordinates.
+For those counts, and for the additional 12- and 16-pilot experiments, this
+project uses evenly distributed rectangular grids:
 
 | Pilot count | Input shape | Frequency positions | Time positions |
 | --- | --- | --- | --- |
+| 12 | `[2, 3, 4]` | 3 evenly spaced locations over 72 subcarriers | 4 evenly spaced locations over 14 symbols |
+| 16 | `[2, 4, 4]` | 4 evenly spaced locations over 72 subcarriers | 4 evenly spaced locations over 14 symbols |
 | 24 | `[2, 6, 4]` | 6 evenly spaced locations over 72 subcarriers | 4 evenly spaced locations over 14 symbols |
 | 48 | `[2, 12, 4]` | 12 evenly spaced locations over 72 subcarriers | 4 evenly spaced locations over 14 symbols |
+
+The 12- and 16-pilot configurations are additional project experiments, not pilot counts evaluated in the AttRNet paper. All four counts use rectangular grids with four pilot-time positions; arbitrary pilot arrangements are not supported by this generator.
 
 The training-data SNR distribution is also absent from the paper. The default
 dataset cycles evenly through `0, 5, 10, 15, 20 dB`, giving 2,400 examples of
@@ -96,11 +102,15 @@ python simulate_data.py --output data/epa7_24pilots --pilots 24
 
 # 48-pilot experiment
 python simulate_data.py --output data/epa7_48pilots --pilots 48
+
+# Additional reduced-overhead experiments
+python simulate_data.py --output data/epa7_12pilots --pilots 12
+python simulate_data.py --output data/epa7_16pilots --pilots 16
 ```
 
-The two commands use the same seed by default. Consequently, their target
-channel realizations are identical; only the pilot observation grids differ.
-This makes a pilot-count comparison fair.
+The commands use the same seed by default. Consequently, their target channel
+realizations are identical; only the pilot observation grids differ. This makes
+pilot-count comparisons fair.
 
 To use a different deterministic realization, choose a different seed:
 
@@ -137,7 +147,7 @@ Expected 24-pilot training shapes are:
 (12000, 2, 72, 14)
 ```
 
-For 48 pilots, the first shape becomes `(12000, 2, 12, 4)`.
+For 12, 16, and 48 pilots, the first shapes are `(12000, 2, 3, 4)`, `(12000, 2, 4, 4)`, and `(12000, 2, 12, 4)`, respectively.
 
 ## Reproducibility boundary
 
