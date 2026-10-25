@@ -1,4 +1,8 @@
 __pycache__
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
 epa7_12pilots_matlab.mat
 epa7_16pilots_matlab.mat
 epa7_24pilots_matlab.mat
@@ -10,3 +14,6 @@ epa7_48pilots_matlab.mat
 !/runs/*/**/
 !/runs/**/*.png
 Research Papers/
+results/checkpoints/
+results/examples/
+task.md
