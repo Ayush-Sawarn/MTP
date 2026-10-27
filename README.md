@@ -99,24 +99,18 @@ flowchart TD
     F --> G
     G --> H[Input tensor: real and imaginary channels, 72 x 14]
 
-    subgraph Estimator[AttRNet-FC channel estimator]
-        H --> I[Stem convolution]
-        I --> J[3 attention residual blocks: global average pooling and FC channel attention]
-        J --> K[Feature convolution]
-        K --> L[Bilinear upsampling]
-        L --> M[Output convolution]
-        M --> N[Estimated full complex channel H-hat]
-    end
+    H --> I[AttRNet model]
+    I --> J[Estimated full complex channel H-hat]
 
-    N --> O[Full-grid MSE against target channel]
-    O -->|backpropagate| C
-    O -->|backpropagate| I
-    N --> P[Validation with discrete top-K mask]
-    P --> Q[Save best validation mask]
-    Q --> R[Freeze selected pilot positions]
-    R --> S[Train a fresh FC AttRNet with the learned mask]
-    U[Uniform K-pilot mask] --> V[Train a fresh FC AttRNet with Uniform pilots]
-    S --> W[Untouched test set: NMSE for each SNR]
+    J --> K[Full-grid MSE against target channel]
+    K -->|backpropagate| C
+    K -->|backpropagate| I
+    J --> L[Validation with discrete top-K mask]
+    L --> M[Save best validation mask]
+    M --> N[Freeze selected pilot positions]
+    N --> O[Train a fresh AttRNet with the learned mask]
+    U[Uniform K-pilot mask] --> V[Train a fresh AttRNet with Uniform pilots]
+    O --> W[Untouched test set: NMSE for each SNR]
     V --> W
     W --> X[Compare pilot overhead and channel-estimation accuracy]
 ```
