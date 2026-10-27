@@ -39,74 +39,100 @@ Each plot compares the paper's digitized MSE values (dashed) with this project's
 
 ![48 pilots, AttRNet-Conv: paper and simulation MSE versus SNR](runs/corrected_conv_48/comparison.png)
 
-### Pilot-overhead study
+### Pilot-overhead study: Uniform vs joint learned pilots
 
-The October 2026 mid-semester presentation reports preliminary comparisons of comb, uniform, block, staggered, and lattice pilot arrangements. Its reported observations are that uniform placement gives the lowest MSE among the tested 24-pilot patterns over most SNRs, and 16 uniformly placed pilots outperform the tested 24-pilot block and comb patterns in the shown results. These are preliminary presentation results; their per-SNR data and generation scripts are not currently included in this repository.
+All four pilot budgets have now been evaluated with AttRNet-FC. The learned layout is obtained by jointly training a pilot selector and an FC estimator; that discrete mask is then frozen, and a fresh FC estimator is trained from scratch. Uniform and learned masks therefore receive the same fresh-estimator protocol. The 16-pilot case uses three estimator seeds; 12, 24, and 48 pilots use seed 2025.
 
-The generator and training scripts support uniform rectangular grids with 12, 16, 24, or 48 pilots, each using four pilot-time positions. The ConcreteAE selector and AttRNet comparison have now been run for 12 and 16 pilots using FC attention.
+The table reports NMSE averaged equally over the five test SNRs (0, 5, 10, 15, and 20 dB). Each test SNR has 800 examples. Lower is better.
 
-The selector needs noisy LS candidates at all 72 Ã— 14 resource elements. The MATLAB files store noisy LS values only at the original uniform pilot positions, along with the clean full channel. `pilot_design/pilot_utils.py` therefore reconstructs candidate observations on demand from each saved clean channel using the generator's unit-energy QPSK and AWGN equation and that sample's SNR. This leaves the imported datasets unchanged. It is an explicit observation-generation assumption: the added pilot patterns are not measurements recorded in the original MATLAB file.
+| Pilots | Overhead | Uniform mean NMSE | Joint-mask mean NMSE | Reduction vs Uniform |
+| ---: | ---: | ---: | ---: | ---: |
+| 12 | 1.19% | 0.160574 | 0.156954 | 2.25% |
+| 16 | 1.59% | 0.137874 | 0.128526 | 6.78% |
+| 24 | 2.38% | 0.103082 | 0.090452 | 12.25% |
+| 48 | 4.76% | 0.069275 | 0.059138 | 14.63% |
 
-Pilot indices use C-order flattening, `index = subcarrier * 14 + OFDM_symbol`. The selector fits only the training split, chooses checkpoints by discrete-selection validation MSE, and does not load test data. The AttRNet scripts keep the existing estimator architecture and train separate models per pattern and budget. Both methods use identical synthesized noisy observations for a given sample/seed and zero-filled `[2,72,14]` input grids.
+The joint-mask mean is lower at every budget. At 12 pilots, however, it is slightly worse than Uniform at 0 and 5 dB; its improvement is at 10 to 20 dB. Results for 12, 24, and 48 pilots are single-seed comparisons. The 16-pilot results average three seeds and are retained as the reproducibility check. Treat the other gains as promising results that still need repeated-seed confirmation.
 
-Current FC results are mixed. At 12 pilots, ConcreteAE has lower NMSE at 10, 15, and 20 dB, but higher NMSE at 0 and 5 dB; its mean NMSE over the five SNRs is slightly higher (0.1642 vs 0.1636). At 16 pilots, ConcreteAE is better at 0 dB but worse at 5–20 dB, with a pronounced gap at higher SNRs. These are single-run results. In the 12-pilot FC runs, uniform AttRNet trained for 100 epochs while ConcreteAE AttRNet trained for 50, so that pair should be rerun with matched settings. The 16-pilot ConcreteAE selector's best MLP-decoder validation epoch was 1; that suggests the selected pattern may be unstable or mismatched to AttRNet's objective, but does not establish the cause. Test NMSE should not be used to choose selectors or tune training settings.
+#### NMSE versus SNR
 
-For future FC experiments, use each budget's matching MATLAB import. Train selectors for each budget; train uniform AttRNet as well when a matched uniform model does not already exist under this full-grid sparse-input protocol. The 12- and 16-pilot imports have identical clean-channel targets and SNR assignments, as do the 24- and 48-pilot imports.
+Error bars show sample standard deviation across estimator seeds where multiple seeds were run.
 
-To rerun the complete FC comparison from 12 pilots, use the PowerShell automation script from this project directory. It sequentially trains all four selectors, then uniform and ConcreteAE FC AttRNet models for each budget, evaluates all eight models on the held-out test splits, and regenerates the FC plots. It stops if a step fails. Activate the desired Python environment first so `python` resolves to that environment.
+![12 pilots, Uniform vs joint learned mask with fresh FC AttRNet](results/figures/nmse_snr_12_uniform_vs_joint_fresh_fc.png)
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\run_fc_pilot_experiments.ps1
+![16 pilots, Uniform vs joint learned mask with fresh FC AttRNet](results/figures/nmse_snr_16_uniform_vs_joint_fresh_fc.png)
+
+![24 pilots, Uniform vs joint learned mask with fresh FC AttRNet](results/figures/nmse_snr_24_uniform_vs_joint_fresh_fc.png)
+
+![48 pilots, Uniform vs joint learned mask with fresh FC AttRNet](results/figures/nmse_snr_48_uniform_vs_joint_fresh_fc.png)
+
+#### Aggregate result across pilot budgets
+
+![Mean test NMSE versus pilot budget for Uniform and joint learned pilots](results/figures/aggregate_nmse_pilot_count_uniform_vs_joint_fresh_fc.png)
+
+#### Pilot locations
+
+Blue squares show Uniform pilot positions; orange crosses show the learned joint mask. Axes cover the 72-subcarrier by 14-symbol grid.
+
+![12 pilot locations: Uniform and joint learned](results/figures/pilot_locations_uniform_vs_joint_12.png)
+
+![16 pilot locations: Uniform and joint learned](results/figures/pilot_locations_uniform_vs_joint_16.png)
+
+![24 pilot locations: Uniform and joint learned](results/figures/pilot_locations_uniform_vs_joint_24.png)
+
+![48 pilot locations: Uniform and joint learned](results/figures/pilot_locations_uniform_vs_joint_48.png)
+
+#### Pilot-reduction workflow
+
+```mermaid
+flowchart TD
+    A[Training split: clean channel H and sample SNR] --> B[Regenerate noisy LS candidates at all 72 x 14 resource elements]
+
+    subgraph Selector[Joint pilot selector: budget K]
+        C[Trainable score logit for each of 1008 locations] --> D[Bounded-sigmoid soft top-K relaxation]
+        D --> E[Hard top-K mask in forward pass]
+        E --> F[Exactly K selected pilot positions]
+        D -. straight-through gradient .-> C
+    end
+
+    B --> G[Apply selected mask to LS grid; zero-fill all other locations]
+    F --> G
+    G --> H[Input tensor: real and imaginary channels, 72 x 14]
+
+    subgraph Estimator[AttRNet-FC channel estimator]
+        H --> I[Stem convolution]
+        I --> J[3 attention residual blocks: global average pooling and FC channel attention]
+        J --> K[Feature convolution]
+        K --> L[Bilinear upsampling]
+        L --> M[Output convolution]
+        M --> N[Estimated full complex channel H-hat]
+    end
+
+    N --> O[Full-grid MSE against target channel]
+    O -->|backpropagate| C
+    O -->|backpropagate| I
+    N --> P[Validation with discrete top-K mask]
+    P --> Q[Save best validation mask]
+    Q --> R[Freeze selected pilot positions]
+    R --> S[Train a fresh FC AttRNet with the learned mask]
+    U[Uniform K-pilot mask] --> V[Train a fresh FC AttRNet with Uniform pilots]
+    S --> W[Untouched test set: NMSE for each SNR]
+    V --> W
+    W --> X[Compare pilot overhead and channel-estimation accuracy]
 ```
 
-The default is 100 AttRNet epochs and seed 2025. Optional parameters can change those values, for example `-Epochs 50 -Seed 2026`. The script overwrites the matching selector indices/checkpoints, FC run checkpoints/configs, and FC metric rows for these four budgets. It does not delete historical Conv metrics.
+The selector fits the training split and uses validation NMSE to choose its discrete mask; test data is not loaded during selector training. The fresh estimators are selected by validation MSE and evaluated on the held-out test split. Since imported MATLAB files do not store noisy LS observations at omitted positions, candidate observations are regenerated from saved clean channels using the generator's QPSK/AWGN convention. This is a controlled observation-generation assumption, not a measurement recorded in the original MATLAB files.
 
-```powershell
-python train_pilot_selector.py --pilots 48 --data-dir data/matlab_epa7_24pilots
-python train_pilot_selector.py --pilots 24 --data-dir data/matlab_epa7_24pilots
-python train_pilot_selector.py --pilots 16 --data-dir data/matlab_epa7_16pilots
-python train_pilot_selector.py --pilots 12 --data-dir data/matlab_epa7_12pilots
-```
-
-For 12 and 16 pilots, train matching uniform and ConcreteAE FC estimators. Example for 16 pilots:
-
-```powershell
-python train_pilot_attnet.py --model fc --method uniform --pilots 16 --data-dir data/matlab_epa7_24pilots
-python train_pilot_attnet.py --model fc --method concrete --pilots 16 --pilot-indices results/pilot_indices/concrete_16.npy --data-dir data/matlab_epa7_24pilots
-```
-
-For 24 and 48 pilots, ConcreteAE FC training commands are:
-
-```powershell
-python train_pilot_attnet.py --model fc --method concrete --pilots 24 --pilot-indices results/pilot_indices/concrete_24.npy --data-dir data/matlab_epa7_24pilots --epochs 100
-python train_pilot_attnet.py --model fc --method concrete --pilots 48 --pilot-indices results/pilot_indices/concrete_48.npy --data-dir data/matlab_epa7_48pilots --epochs 100
-```
-
-The existing `runs/corrected_fc_24` and `runs/corrected_fc_48` uniform checkpoints take compact pilot-grid inputs (`[2, P_f, 4]`). The new pilot-pattern training pipeline takes zero-filled full-grid inputs (`[2,72,14]`). Although the estimator architecture and weights have compatible tensor operations, these input/training protocols differ, so their metrics are not a strict controlled comparison. For a fair uniform-versus-ConcreteAE result at 24 and 48 pilots, retrain the uniform FC estimator using `train_pilot_attnet.py` and the matching data directory, or clearly label the existing baseline comparison as protocol-mismatched.
-
-Evaluate each resulting `best.pt` checkpoint on test data:
-
-```powershell
-python evaluate_pilot_patterns.py --checkpoint runs/pilot_design/fc_uniform_16/best.pt --data-dir data/matlab_epa7_24pilots
-python evaluate_pilot_patterns.py --checkpoint runs/pilot_design/fc_concrete_16/best.pt --data-dir data/matlab_epa7_24pilots
-```
-
-Evaluation appends/replaces the matching run rows in `results/metrics.csv` and saves example channel arrays. After evaluating the FC runs, create aggregate NMSE-versus-SNR, NMSE-versus-pilot-count, overhead-versus-NMSE, and selected-location plots with:
-
-```powershell
-python plot_pilot_results.py --model AttRNet-FC
-```
-
-The selector's synthetic observations use the same AWGN variance convention as `matlab/generate_epa_ofdm_dataset.m`. Since the stored dataset does not retain received symbols/noise at omitted positions, learned pilot selection is evaluated under this controlled regenerated observation model. Record that limitation when interpreting results.
+Raw per-seed/per-SNR results are in `results/reproducibility_all_budgets.csv`; means and standard deviations are in `results/reproducibility_all_budgets_summary.csv`. The 12-, 24-, and 48-pilot masks are in `results/pilot_indices/joint_*.npy`. The 16-pilot mask and its three-seed candidate checkpoint, config, and test metrics are preserved under `results/candidate_joint_16/`.
 
 ### Next work
 
-- Integrate and validate the different pilot counts and placements in the codebase, then report MSE/NMSE versus SNR and pilot overhead.
-- Design and benchmark a lightweight residual Transformer with time-frequency position information against AttRNet using matched conditions.
-- Explore the proposed IRS-assisted OFDM extension, including cascaded-channel estimation and IRS phase configuration.
+- Optional follow-up: measure seed-to-seed variability for the completed 12-, 24-, and 48-pilot comparisons.
+- Benchmark a lightweight residual Transformer with time-frequency position information against AttRNet under matched conditions.
+- Explore the IRS-assisted OFDM extension, including cascaded-channel estimation and IRS phase configuration.
 - Compare estimation accuracy alongside parameter count, FLOPs, and inference time.
 
-These are planned directions, not features implemented by the current scripts.
+All pilot-budget runs documented above are complete. The remaining bullets are optional follow-up or future research.
 
 ## Model and data
 
@@ -120,9 +146,9 @@ The MATLAB dataset generator uses `lteFadingChannel` with the 3GPP EPA 7-path pr
 
 For details of the generated arrays and assumptions, see [`DATA_GENERATION_README.md`](DATA_GENERATION_README.md) and [`matlab/README.md`](matlab/README.md).
 
-## Run the baseline
+## Reproduce the original paper baselines
 
-From this directory, activate a Python environment with the packages in `requirements.txt`. MATLAB datasets and imported NumPy splits for the 24- and 48-pilot baseline are already present in this workspace. To generate 12- or 16-pilot MATLAB datasets, run `generate_epa_ofdm_dataset(12, 'epa7_12pilots_matlab.mat')` or `generate_epa_ofdm_dataset(16, 'epa7_16pilots_matlab.mat')` in MATLAB Online, then import them with:
+These commands reproduce the original AttRNet paper baselines; they are separate from the completed Uniform-versus-joint pilot-overhead experiments above. From this directory, activate a Python environment with the packages in `requirements.txt`. MATLAB datasets and imported NumPy splits for the 24- and 48-pilot baseline are already present in this workspace. To generate 12- or 16-pilot MATLAB datasets, run `generate_epa_ofdm_dataset(12, 'epa7_12pilots_matlab.mat')` or `generate_epa_ofdm_dataset(16, 'epa7_16pilots_matlab.mat')` in MATLAB Online, then import them with:
 
 ```powershell
 python import_matlab_dataset.py --mat-file epa7_12pilots_matlab.mat --output data/matlab_epa7_12pilots

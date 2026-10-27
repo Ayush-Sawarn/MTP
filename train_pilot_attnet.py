@@ -43,9 +43,19 @@ def set_seed(seed: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=["fc", "conv"], default="fc")
-    parser.add_argument("--method", choices=["uniform", "concrete"], required=True)
+    parser.add_argument(
+        "--method",
+        choices=["uniform", "concrete", "joint", "joint_frozen"],
+        required=True,
+        help="Fixed pilot pattern to train with; joint_frozen uses a learned mask with the selector frozen.",
+    )
     parser.add_argument("--pilots", type=int, choices=PILOT_BUDGETS, required=True)
-    parser.add_argument("--pilot-indices", type=Path, default=None, help="Required for ConcreteAE; uniform indices are generated automatically.")
+    parser.add_argument(
+        "--pilot-indices",
+        type=Path,
+        default=None,
+        help="Required for ConcreteAE/joint patterns; uniform indices are generated automatically.",
+    )
     parser.add_argument("--data-dir", type=Path, default=Path("data/matlab_epa7_24pilots"), help="Common target/split dataset; its manifest pilot count is not used.")
     parser.add_argument("--features", type=int, default=8)
     parser.add_argument("--output-kernel", type=int, nargs=2, default=(36, 7))
@@ -64,6 +74,8 @@ def main() -> None:
         index_path.parent.mkdir(parents=True, exist_ok=True)
         np.save(index_path, indices)
     else:
+        if args.method == "joint_frozen" and args.pilot_indices is None:
+            parser.error("--pilot-indices is required for a frozen joint mask.")
         index_path = args.pilot_indices or Path("results/pilot_indices") / f"concrete_{args.pilots}.npy"
         if not index_path.is_file():
             parser.error(f"ConcreteAE indices not found: {index_path}. Train the selector first.")

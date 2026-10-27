@@ -1,19 +1,35 @@
-__pycache__
+# Python caches and local environments
+__pycache__/
 *.py[cod]
 .venv/
 venv/
 .pytest_cache/
-epa7_12pilots_matlab.mat
-epa7_16pilots_matlab.mat
-epa7_24pilots_matlab.mat
-epa7_48pilots_matlab.mat
+
+# Local machine files and generated datasets
+.DS_Store
+desktop.ini
+*.mat
 /data
+
+# Training logs, weights, and per-sample examples are kept locally
+*.log
+*.tmp
+*.pt
+*.pth
+*.ckpt
+*.npz
+
+# Keep run folders and PNG plots, but omit checkpoints/configs from Git
 /runs/*
 !/runs/*/
 /runs/*/**
 !/runs/*/**/
 !/runs/**/*.png
+
+# Generated result artifacts that are not source data or report figures
 Research Papers/
 results/checkpoints/
 results/examples/
+results/reproducibility_figures/
+results/reproducibility_examples/
 task.md

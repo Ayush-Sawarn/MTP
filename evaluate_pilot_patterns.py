@@ -21,7 +21,7 @@ from pilot_design.pilot_utils import PILOT_BUDGETS, PilotPatternDataset, validat
 
 FIELDS = [
     "pilot_method", "model", "pilot_count", "pilot_overhead_percent", "snr_db",
-    "mse", "nmse", "nmse_db", "nmse_averaging", "training_time_seconds",
+    "seed", "mse", "nmse", "nmse_db", "nmse_averaging", "training_time_seconds",
     "inference_latency_ms_per_sample", "num_parameters", "test_samples", "checkpoint",
 ]
 
@@ -32,10 +32,16 @@ def append_or_replace(path: Path, new_rows: list[dict[str, object]]) -> None:
     if path.exists():
         with path.open("r", newline="", encoding="utf-8") as stream:
             old_rows = list(csv.DictReader(stream))
-    keys = {(r["pilot_method"], r["model"], int(r["pilot_count"]), float(r["snr_db"])) for r in new_rows}
+    keys = {
+        (r["pilot_method"], r["model"], int(r["pilot_count"]), float(r["snr_db"]), int(r.get("seed", -1)))
+        for r in new_rows
+    }
     kept = [
         row for row in old_rows
-        if (row["pilot_method"], row["model"], int(row["pilot_count"]), float(row["snr_db"])) not in keys
+        if (
+            row["pilot_method"], row["model"], int(row["pilot_count"]), float(row["snr_db"]),
+            int(row.get("seed") or -1),
+        ) not in keys
     ]
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)
@@ -55,6 +61,8 @@ def main() -> None:
     parser.add_argument("--results-csv", type=Path, default=Path("results/metrics.csv"))
     parser.add_argument("--figures-dir", type=Path, default=Path("results/figures"))
     parser.add_argument("--examples-dir", type=Path, default=Path("results/examples"))
+    parser.add_argument("--no-extra-artifacts", action="store_true",
+                        help="Write metrics only; skip per-checkpoint plots and example arrays.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -107,6 +115,7 @@ def main() -> None:
     config_path = args.checkpoint.parent / "config.json"
     config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
     train_seconds = float(config.get("training_seconds", checkpoint.get("training_seconds", 0.0)))
+    seed = int(checkpoint.get("seed", config.get("seed", args.seed)))
     parameter_total = parameter_count(model)
     latency_ms = 1000.0 * inference_seconds / max(n_inference, 1)
     method = checkpoint["pilot_method"]
@@ -130,6 +139,7 @@ def main() -> None:
             "pilot_count": budget,
             "pilot_overhead_percent": f"{overhead_pct:.6f}",
             "snr_db": snr,
+            "seed": seed,
             "mse": f"{mse_value:.10g}",
             "nmse": f"{nmse_value:.10g}",
             "nmse_db": f"{nmse_db:.8g}",
@@ -143,29 +153,30 @@ def main() -> None:
     append_or_replace(args.results_csv, rows)
     print(f"metrics CSV: {args.results_csv}")
 
-    args.figures_dir.mkdir(parents=True, exist_ok=True)
-    snrs = [float(row["snr_db"]) for row in rows]
-    nmse_values = [float(row["nmse"]) for row in rows]
-    figure, axis = plt.subplots(figsize=(6.4, 4.8), constrained_layout=True)
-    axis.semilogy(snrs, nmse_values, marker="o", color="black", linewidth=2)
-    axis.set_xticks(snrs)
-    axis.set_xlabel("SNR (dB)")
-    axis.set_ylabel("NMSE (per-sample average)")
-    axis.set_title(f"{model_label}, {method} pilots, budget {budget}")
-    axis.grid(True, which="both", linestyle=":", alpha=0.65)
-    figure.savefig(args.figures_dir / f"{checkpoint['model']}_{method}_{budget}_nmse_snr.png", dpi=180)
-    plt.close(figure)
+    if not args.no_extra_artifacts:
+        args.figures_dir.mkdir(parents=True, exist_ok=True)
+        snrs = [float(row["snr_db"]) for row in rows]
+        nmse_values = [float(row["nmse"]) for row in rows]
+        figure, axis = plt.subplots(figsize=(6.4, 4.8), constrained_layout=True)
+        axis.semilogy(snrs, nmse_values, marker="o", color="black", linewidth=2)
+        axis.set_xticks(snrs)
+        axis.set_xlabel("SNR (dB)")
+        axis.set_ylabel("NMSE (per-sample average)")
+        axis.set_title(f"{model_label}, {method} pilots, budget {budget}")
+        axis.grid(True, which="both", linestyle=":", alpha=0.65)
+        figure.savefig(args.figures_dir / f"{checkpoint['model']}_{method}_{budget}_nmse_snr.png", dpi=180)
+        plt.close(figure)
 
-    args.examples_dir.mkdir(parents=True, exist_ok=True)
-    example_snr = sorted(examples)[0]
-    estimate, target = examples[example_snr]
-    np.savez_compressed(
-        args.examples_dir / f"{checkpoint['model']}_{method}_{budget}_snr_{example_snr:g}.npz",
-        estimate=estimate,
-        target=target,
-        pilot_indices=indices,
-        snr_db=example_snr,
-    )
+        args.examples_dir.mkdir(parents=True, exist_ok=True)
+        example_snr = sorted(examples)[0]
+        estimate, target = examples[example_snr]
+        np.savez_compressed(
+            args.examples_dir / f"{checkpoint['model']}_{method}_{budget}_snr_{example_snr:g}.npz",
+            estimate=estimate,
+            target=target,
+            pilot_indices=indices,
+            snr_db=example_snr,
+        )
 
 
 if __name__ == "__main__":
