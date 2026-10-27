@@ -1,0 +1,6 @@
+pilot_method,model,pilot_count,pilot_overhead_percent,snr_db,mse,nmse,nmse_db,nmse_averaging,training_time_seconds,inference_latency_ms_per_sample,num_parameters,test_samples,checkpoint
+joint_frozen,AttRNet-FC,16,1.587302,0.0,0.1100282598,0.3535765445,-4.5151655,per_sample_then_mean,1108.990334,0.12059658,10254,800,runs\pilot_design\fc_joint_frozen_16_100ep\best.pt
+joint_frozen,AttRNet-FC,16,1.587302,5.0,0.04424269812,0.1503454371,-8.2290975,per_sample_then_mean,1108.990334,0.12059658,10254,800,runs\pilot_design\fc_joint_frozen_16_100ep\best.pt
+joint_frozen,AttRNet-FC,16,1.587302,10.0,0.02341918405,0.05773490186,-12.385616,per_sample_then_mean,1108.990334,0.12059658,10254,800,runs\pilot_design\fc_joint_frozen_16_100ep\best.pt
+joint_frozen,AttRNet-FC,16,1.587302,15.0,0.01707488143,0.04278510864,-13.687074,per_sample_then_mean,1108.990334,0.12059658,10254,800,runs\pilot_design\fc_joint_frozen_16_100ep\best.pt
+joint_frozen,AttRNet-FC,16,1.587302,20.0,0.01442901379,0.04014853084,-13.963303,per_sample_then_mean,1108.990334,0.12059658,10254,800,runs\pilot_design\fc_joint_frozen_16_100ep\best.pt
